@@ -38,7 +38,10 @@ export default class Sitemapper {
     const settings = options || { requestHeaders: {} };
     this.url = settings.url;
     this.timeout = settings.timeout || 15000;
+    this.globalTimeout = settings.globalTimeout || 30000;
+    this.maxSites = settings.maxSites || -1;
     this.timeoutTable = {};
+    this.cancelTable = {};
     this.lastmod = settings.lastmod || 0;
     this.requestHeaders = settings.requestHeaders;
     this.debug = settings.debug;
@@ -46,6 +49,7 @@ export default class Sitemapper {
     this.retries = settings.retries || 0;
     this.rejectUnauthorized =
       settings.rejectUnauthorized === false ? false : true;
+    this.totalSites = 0;
   }
 
   /**
@@ -73,6 +77,10 @@ export default class Sitemapper {
       }
     }
 
+    let globalExecutionTimeout = setTimeout(() => {
+      this.stopExecution();
+    }, this.globalTimeout)
+
     try {
       // crawl the URL
       results = await this.crawl(url);
@@ -83,12 +91,15 @@ export default class Sitemapper {
       }
     }
 
+    clearTimeout(globalExecutionTimeout);
+
     return {
       url,
       sites: results.sites || [],
       errors: results.errors || [],
     };
   }
+
   /**
    * Get the timeout
    *
@@ -108,6 +119,52 @@ export default class Sitemapper {
    */
   static set timeout(duration) {
     this.timeout = duration;
+  }
+
+
+  /**
+   * Get the global timeout
+   *
+   * @example console.log(sitemapper.globalTimeout);
+   * @returns {Timeout}
+   */
+  static get globalTimeout() {
+    return this.globalTimeout;
+  }
+
+
+  /**
+   * Set the global timeout
+   *
+   * @public
+   * @param {Timeout} duration
+   * @example sitemapper.globalTimeout = 15000; // 15 seconds
+   */
+  static set globalTimeout(duration) {
+    this.globalTimeout = duration;
+  }
+
+
+  /**
+   * Get the max sites
+   *
+   * @example console.log(sitemapper.maxSites);
+   * @returns {Timeout}
+   */
+  static get maxSites() {
+    return this.maxSites;
+  }
+
+
+  /**
+   * Set the max sites
+   *
+   * @public
+   * @param {Timeout} maxSites
+   * @example sitemapper.maxSites = 50000; // 50000 sites
+   */
+  static set maxSites(maxSites) {
+    this.maxSites = maxSites;
   }
 
   /**
@@ -200,6 +257,8 @@ export default class Sitemapper {
       // if the response does not have a successful status code then clear the timeout for this url.
       if (!response || response.statusCode !== 200) {
         clearTimeout(this.timeoutTable[url]);
+        delete this.timeoutTable[url];
+
         return { error: response.error, data: response };
       }
 
@@ -250,8 +309,30 @@ export default class Sitemapper {
    * @param {Promise} requester - the promise that creates the web request to the url
    */
   initializeTimeout(url, requester) {
+    this.cancelTable[url] = requester.cancel;
+
     // this will throw a CancelError which will be handled in the parent that calls this method.
-    this.timeoutTable[url] = setTimeout(() => requester.cancel(), this.timeout);
+    this.timeoutTable[url] = setTimeout(() => this.cancelTable[url](), this.timeout);
+  }
+
+
+  /**
+   * Stops stops execution when a global timeout happens
+   *
+   * @private
+   */
+  stopExecution() {
+    for (let _index in this.cancelTable) {
+      this.cancelTable[_index]();
+      delete this.cancelTable[_index];
+    }
+
+    for (let _index in this.timeoutTable) {
+      clearTimeout(this.timeoutTable[_index]);
+      delete this.timeoutTable[_index];
+    }
+
+    this.stopped = true;
   }
 
   /**
@@ -265,9 +346,36 @@ export default class Sitemapper {
    */
   async crawl(url, retryIndex = 0) {
     try {
+      if (this.stopped === true) {
+        return {
+          sites: [],
+          errors: [{
+            type : "force_stopped",
+            message: "Execution was stopped because global timeout was reached",
+            url,
+            retries: retryIndex
+          }]
+        }
+      }
+
+      if (this.maxSites !== -1 && this.totalSites > this.maxSites) {
+        return {
+          sites: [],
+          errors: [{
+            type : "force_stopped",
+            message: "Execution was stopped because max sites was reached",
+            url,
+            retries: retryIndex
+          }]
+        }
+      }
+
+
       const { error, data } = await this.parse(url);
       // The promise resolved, remove the timeout
       clearTimeout(this.timeoutTable[url]);
+
+      delete this.timeoutTable[url];
 
       if (error) {
         // Handle errors during sitemap parsing / request
@@ -306,6 +414,7 @@ export default class Sitemapper {
         if (this.debug) {
           console.debug(`Urlset found during "crawl('${url}')"`);
         }
+
         // filter out any urls that are older than the lastmod
         const sites = data.urlset.url
           .filter((site) => {
@@ -316,6 +425,8 @@ export default class Sitemapper {
             return modified >= this.lastmod;
           })
           .map((site) => site.loc && site.loc[0]);
+
+        this.totalSites += sites.length
         return {
           sites,
           errors: [],

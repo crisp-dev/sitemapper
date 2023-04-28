@@ -9,8 +9,7 @@ module.exports = (api) => {
           "esmodules": true
         }
       }
-    ],
-    'minify', // minify the Babel code
+    ]
   ];
   const plugins = [
     [

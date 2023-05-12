@@ -42,6 +42,7 @@ export default class Sitemapper {
     this.maxSites = settings.maxSites || -1;
     this.timeoutTable = {};
     this.cancelTable = {};
+    this.maxXMLSize = settings.maxXMLSize || 10000000;
     this.lastmod = settings.lastmod || 0;
     this.requestHeaders = settings.requestHeaders;
     this.debug = settings.debug;
@@ -268,6 +269,17 @@ export default class Sitemapper {
         responseBody = await this.decompressResponseBody(response.body);
       } else {
         responseBody = response.body;
+      }
+
+      if (responseBody.length > this.maxXMLSize && this.maxXMLSize != -1) {
+        let error = (`
+          Sitemap body exceeds ${this.maxXMLSize / 1000 /1000}MB`
+        );
+
+        return {
+          error: error,
+          data: new Error(error)
+        };
       }
 
       // otherwise parse the XML that was returned.

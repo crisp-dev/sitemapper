@@ -49,8 +49,8 @@
   "scripts": {
     "compile": "babel src -d lib -s && tsc --project ./src/tests/",
     "_build": "npm run clean && npm run compile",
-    "start": "npm run build && node lib/examples/index.js",
-    "test": "npm run build && mocha ./lib/tests/*.js && npm run lint",
+    "start": "npm run _build && node lib/examples/index.js",
+    "test": "npm run _build && mocha ./lib/tests/*.js && npm run lint",
     "lint": "eslint src",
     "clean": "rm -rf lib",
     "docs": "documentation build ./src/assets/sitemapper.js -f md > docs.md"

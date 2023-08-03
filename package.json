@@ -46,6 +46,15 @@
   "engines": {
     "node": ">= 10.0.0"
   },
+  "scripts": {
+    "compile": "echo 'ok'",
+    "_build": "echo 'ok'",
+    "start": "echo 'ok'",
+    "test": "echo 'ok'",
+    "lint": "echo 'ok'",
+    "clean": "echo 'ok'",
+    "docs": "echo 'ok'"
+  },
   "dependencies": {
     "got": "^11.8.0",
     "is-gzip": "2.0.0",

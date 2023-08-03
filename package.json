@@ -56,10 +56,10 @@
     "node": ">= 10.0.0"
   },
   "dependencies": {
-    "got": "^11.0.0",
+    "got": "^11.8.0",
     "is-gzip": "2.0.0",
-    "p-limit": "^3.0.0",
-    "xml2js": "^0.4.0"
+    "p-limit": "^3.1.0",
+    "xml2js": "^0.4.23"
   },
   "devDependencies": {
     "@babel/cli": "^7.12.8",

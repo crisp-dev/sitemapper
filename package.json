@@ -47,13 +47,13 @@
     "node": ">= 10.0.0"
   },
   "scripts": {
-    "compile": "echo 'ok'",
-    "_build": "echo 'ok'",
-    "start": "echo 'ok'",
-    "test": "echo 'ok'",
-    "lint": "echo 'ok'",
-    "clean": "echo 'ok'",
-    "docs": "echo 'ok'"
+    "compile": "babel src -d lib -s && tsc --project ./src/tests/",
+    "_build": "npm run clean && npm run compile",
+    "start": "npm run build && node lib/examples/index.js",
+    "test": "npm run build && mocha ./lib/tests/*.js && npm run lint",
+    "lint": "eslint src",
+    "clean": "rm -rf lib",
+    "docs": "documentation build ./src/assets/sitemapper.js -f md > docs.md"
   },
   "dependencies": {
     "got": "^11.8.0",

@@ -18,6 +18,8 @@ export interface SitemapperOptions {
   requestHeaders?: {[name: string]: string};
   retries?: number;
   timeout?: number;
+  globalTimeout?: number;
+  maxSites?: number;
   url?: string;
 }
 
